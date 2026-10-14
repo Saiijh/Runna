@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Runna: errand app prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>
+:root{--bg:#f5f6f4;--card:#fff;--ink:#0f1512;--mute:#6a726d;--line:#e4e7e3;--accent:#0b6e4f;--accent-ink:#fff;--soft:#e6f1ec;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1311;--card:#171d1a;--ink:#eef2ef;--mute:#9aa49e;--line:#26302b;--accent:#2fbf8a;--accent-ink:#06150f;--soft:#14261f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1311;--card:#171d1a;--ink:#eef2ef;--mute:#9aa49e;--line:#26302b;--accent:#2fbf8a;--accent-ink:#06150f;--soft:#14261f;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.5 "Plus Jakarta Sans","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:480px;margin:0 auto;padding:20px 20px 110px}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.5px;text-transform:lowercase}
+.logo span{color:var(--accent)}
+.hero{padding:40px 0 32px}
+.hero p{font-weight:800;font-size:38px;line-height:1.08;letter-spacing:-1.2px;margin:36px 0 0}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:12px 16px;min-height:50px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700;width:100%}
+.dark{background:var(--ink);color:var(--bg);border-color:var(--ink);width:100%}
+.stack>*{margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.8px;margin:6px 0 16px}
+h2{font-size:16px;font-weight:700;margin:24px 0 10px}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px}
+input,select{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:50px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.title{font-weight:700}
+.meta{font-size:14px;color:var(--mute)}
+.price{font-weight:800;font-size:17px;white-space:nowrap}
+.pill{display:inline-block;font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--line);margin:8px 0 4px}
+.pill.open{background:var(--soft);color:var(--accent)}
+.pill.paid{background:var(--accent);color:var(--accent-ink)}
+.empty{color:var(--mute);text-align:center;padding:24px 12px;border:1px dashed var(--line);border-radius:18px;margin-bottom:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bal{font-weight:800;font-size:38px;letter-spacing:-1.5px;line-height:1.1}
+.steps{list-style:none;padding:0;margin:0}
+.steps li{padding:8px 0 8px 32px;position:relative;color:var(--mute)}
+.steps li:before{content:"";position:absolute;left:2px;top:11px;width:16px;height:16px;border-radius:50%;border:2px solid var(--line)}
+.steps li.done{color:var(--ink);font-weight:700}
+.steps li.done:before{background:var(--accent);border-color:var(--accent)}
+.escrow{background:var(--soft);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:600;margin-bottom:12px}
+.stars{display:flex;gap:6px}
+.stars button{flex:1;padding:6px}
+.stars button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.link{background:none;border:none;color:var(--mute);width:auto;text-align:left;padding:0 0 8px;min-height:44px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav div{max-width:480px;margin:0 auto;display:flex}
+nav button{flex:1;border:none;border-radius:0;background:none;padding:14px 4px;font-size:14px;color:var(--mute)}
+nav button[aria-current="page"]{color:var(--accent);font-weight:800;box-shadow:inset 0 3px 0 var(--accent)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;max-width:90%;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.show{opacity:1}
+.note{font-size:13px;color:var(--mute);margin-top:16px}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+
+/* sleek refresh */
+:root{--bg:#fff;--card:#f4f6f4;--line:#e8ece8;--accent:#0a7d4d;--deep:#0b3d2c;--lime:#d4f26a}
+body{letter-spacing:-.1px}
+h1{font-size:30px;letter-spacing:-1px}
+button{border-radius:99px}
+input,select{background:var(--bg);border-radius:16px}
+.card{border:none;border-radius:22px;padding:18px}
+.empty{border-radius:22px}
+.lime{background:var(--lime);color:#0b3d2c;border-color:var(--lime);font-weight:800;width:100%}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.loc{background:var(--card);padding:8px 14px;border-radius:99px;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
+.loc:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--lime);color:#0b3d2c;display:grid;place-items:center;font-weight:800}
+.heroc{background:var(--deep);color:#fff;border-radius:26px;padding:22px;margin:4px 0 8px}
+.hh{font-weight:800;font-size:26px;line-height:1.12;letter-spacing:-.8px}
+.hs{opacity:.8;font-size:14px;margin:10px 0 18px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{min-height:92px;text-align:left;border-radius:22px;border:none;background:var(--card);padding:16px;font-weight:700;line-height:1.2;display:flex;align-items:flex-end}
+nav{border-top:none;box-shadow:0 -8px 24px rgba(0,0,0,.06)}
+nav button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 12px;font-size:12px;font-weight:600}
+nav button[aria-current="page"]{box-shadow:none;color:var(--accent);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+var AREAS=["Kuto","Ijaye","Oke-Ilewo","Panseke","Lafenwa","Abiola Way"];
+var users={},U=null,S="welcome",tab="home",sel=null,role="C",pre="",tt;
+var errands=[
+{id:1,title:"Buy 2 loaves of bread and eggs",area:"Kuto",price:1500,status:"open",owner:"seed",cust:"Bukola"},
+{id:2,title:"Pick up my laundry",area:"Oke-Ilewo",price:2000,status:"open",owner:"seed",cust:"Femi"},
+{id:3,title:"Pay my DSTV at the shop",area:"Panseke",price:1200,status:"open",owner:"seed",cust:"Ngozi"}
+];
+var nid=4,NAMES=["Tunde Adebayo","Amaka Obi","Chinedu Eze","Aisha Bello","Seun Ogunleye","Kemi Salami"];
+var LABEL={open:"Waiting for an errander",taken:"Errander on the way",delivered:"Delivered, waiting for confirmation",paid:"Completed, payment released"};
+var STEPS=["Posted","Accepted","Delivered","Paid"],IDX={open:0,taken:1,delivered:2,paid:3};
+
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+function btn(text,fn,cls){var b=el("button",cls||"",text);b.addEventListener("click",fn);return b}
+function naira(n){return "₦"+Number(n).toLocaleString("en-NG")}
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(function(){t.classList.remove("show")},2800)}
+function val(id){return document.getElementById(id).value.trim()}
+function field(label,id,type,ph,v){var d=el("div"),l=el("label","",label);l.setAttribute("for",id);var i=el("input");i.id=id;i.type=type||"text";if(ph)i.placeholder=ph;if(v!==undefined)i.value=v;d.appendChild(l);d.appendChild(i);return d}
+function go(s,t){S=s;if(t)tab=t;render()}
+function byId(id){return errands.find(function(x){return x.id===id})}
+function mine(){return errands.filter(function(e){return U.role==="C"?e.owner===U.phone:e.byPhone===U.phone})}
+
+/* ---------- auth ---------- */
+function welcome(v){
+ var h=el("div","hero");h.appendChild(el("div","logo")).innerHTML="";
+ var lg=h.firstChild;lg.appendChild(document.createTextNode("Run"));lg.appendChild(el("span","","na"));
+ h.appendChild(el("p","","Busy? Send someone. Free? Earn on the way."));
+ v.appendChild(h);
+ var s=el("div","stack");
+ s.appendChild(btn("Create account",function(){go("signup")},"primary"));
+ s.appendChild(btn("Log in",function(){go("login")},"dark"));
+ v.appendChild(s);
+ v.appendChild(el("p","note","Prototype for Abeokuta. Everything is simulated and resets when you reload."));
+}
+function signup(v){
+ v.appendChild(btn("Back",function(){go("welcome")},"link"));
+ v.appendChild(el("h1","","Create your account"));
+ var q=el("div","meta","I want to");v.appendChild(q);
+ var g=el("div","seg");g.style.margin="6px 0 6px";
+ var bc=btn("Send errands",function(){role="C";bc.setAttribute("aria-pressed","true");be.setAttribute("aria-pressed","false")});
+ var be=btn("Run errands",function(){role="E";be.setAttribute("aria-pressed","true");bc.setAttribute("aria-pressed","false")});
+ bc.setAttribute("aria-pressed",String(role==="C"));be.setAttribute("aria-pressed",String(role==="E"));
+ g.appendChild(bc);g.appendChild(be);v.appendChild(g);
+ v.appendChild(field("Full name","s-n","text","e.g. Adaobi Okafor"));
+ v.appendChild(field("Phone number","s-p","tel","08012345678"));
+ v.appendChild(field("Password","s-w","password","At least 6 characters"));
+ var b=btn("Create account",doSignup,"primary");b.style.marginTop="16px";v.appendChild(b);
+}
+function doSignup(){
+ var n=val("s-n"),p=val("s-p"),w=document.getElementById("s-w").value;
+ if(n.length<2)return toast("Enter your full name.");
+ if(!/^0\d{10}$/.test(p))return toast("Enter an 11-digit phone number, like 08012345678.");
+ if(w.length<6)return toast("Password needs at least 6 characters.");
+ if(users[p])return toast("This number already has an account. Log in instead.");
+ users[p]={name:n,phone:p,pw:w,role:role,balance:role==="C"?5000:0,verified:false};
+ U=users[p];tab="home";go("verify");
+}
+function login(v){
+ v.appendChild(btn("Back",function(){go("welcome")},"link"));
+ v.appendChild(el("h1","","Welcome back"));
+ v.appendChild(field("Phone number","l-p","tel","08012345678"));
+ v.appendChild(field("Password","l-w","password"));
+ var b=btn("Log in",function(){
+  var u=users[val("l-p")];
+  if(!u||u.pw!==document.getElementById("l-w").value)return toast("Phone number or password is wrong.");
+  U=u;tab="home";go(U.verified?"main":"verify");
+ },"primary");b.style.marginTop="16px";v.appendChild(b);
+ v.appendChild(el("p","note","No account yet? Go back and create one."));
+}
+function verify(v){
+ v.appendChild(el("h1","","Verify your identity"));
+ v.appendChild(el("p","meta",U.role==="E"?"Customers trust erranders with their money and sometimes their homes, so every errander is verified before accepting errands.":"Erranders go to the places you send them, so everyone who posts an errand is verified first. This keeps Runna from being used to lure anyone into harm."));
+ v.appendChild(field("NIN (11 digits)","v-n","tel","12345678901"));
+ var c=el("div","card","Selfie with your ID: the real app opens the camera here.");c.style.marginTop="12px";v.appendChild(c);
+ v.appendChild(btn("Submit for verification",function(){
+  if(!/^\d{11}$/.test(val("v-n")))return toast("NIN must be 11 digits.");
+  U.verified=true;toast("Verified. In the real app this takes a few minutes of checks.");go("main");
+ },"primary"));
+}
+
+/* ---------- main ---------- */
+function card(e,label,fn){
+ var c=el("div","card"),r=el("div","row"),l=el("div");
+ l.appendChild(el("div","title",e.title));
+ l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":U.name)+(e.by?" · errander: "+e.by:"")));
+ r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));
+ c.appendChild(r);c.appendChild(el("span","pill "+e.status,LABEL[e.status]));
+ var b=btn(label||"View details",fn||function(){sel=e.id;go("detail")});b.style.width="100%";b.style.marginTop="6px";c.appendChild(b);
+ return c;
+}
+function home(v){
+ var tb=el("div","top");tb.appendChild(el("div","loc","Abeokuta"));tb.appendChild(el("div","avatar",U.name.charAt(0).toUpperCase()));v.appendChild(tb);
+ v.appendChild(el("h1","","Hi, "+U.name.split(" ")[0]));
+ if(U.role==="C"){
+  var hc=el("div","heroc");hc.appendChild(el("div","hh","Too busy to run it yourself?"));
+  hc.appendChild(el("div","hs","Verified erranders nearby will do it. Your money stays with Runna until you confirm delivery."));
+  hc.appendChild(btn("Post an errand",function(){pre="";go("post")},"lime"));v.appendChild(hc);
+  v.appendChild(el("h2","","Popular errands"));var tg=el("div","tiles");
+  [["Buy items","Buy: "],["Pick up and drop off","Pick up and deliver: "],["Queue for me","Queue for me at: "],["Pay a bill","Pay a bill: "]].forEach(function(t){tg.appendChild(btn(t[0],function(){pre=t[1];go("post")},"tile"))});
+  v.appendChild(tg);
+  v.appendChild(el("h2","","Your errands"));
+  var m=mine();
+  if(!m.length)v.appendChild(el("div","empty","No errands yet. Post your first one."));
+  m.forEach(function(e){v.appendChild(card(e))});
+ }else{
+  v.appendChild(el("h2","","Open errands near you"));
+  var o=errands.filter(function(e){return e.status==="open"});
+  if(!o.length)v.appendChild(el("div","empty","No open errands right now. You'll be notified when one comes in."));
+  o.forEach(function(e){v.appendChild(card(e,"View and accept"))});
+ }
+}
+function jobs(v){
+ v.appendChild(el("h1","","My jobs"));
+ var m=mine();
+ if(!m.length)v.appendChild(el("div","empty","Accept an errand and it shows up here."));
+ m.forEach(function(e){v.appendChild(card(e))});
+}
+function wallet(v){
+ v.appendChild(el("h1","","Wallet"));
+ var c=el("div","card");
+ if(U.role==="C"){
+  c.appendChild(el("div","meta","Available balance"));c.appendChild(el("div","bal",naira(U.balance)));
+  var b=btn("Add ₦5,000 (simulated)",function(){U.balance+=5000;toast("₦5,000 added. The real app uses Paystack here.");render()},"primary");b.style.marginTop="12px";c.appendChild(b);
+  v.appendChild(c);
+  v.appendChild(el("h2","","Payments"));
+  var m=mine();
+  if(!m.length)v.appendChild(el("div","empty","Your payments show up here."));
+  m.forEach(function(e){v.appendChild(card(e,"View details"))});
+ }else{
+  var paid=0,pend=0;mine().forEach(function(e){if(e.status==="paid")paid+=e.price;else pend+=e.price});
+  c.appendChild(el("div","meta","Earned"));c.appendChild(el("div","bal",naira(paid)));
+  c.appendChild(el("div","meta","Pending: "+naira(pend)));
+  var w=btn("Withdraw to bank (simulated)",function(){toast(paid?"Withdrawal started.":"Nothing to withdraw yet.")},"dark");w.style.marginTop="12px";c.appendChild(w);
+  v.appendChild(c);
+ }
+}
+function profile(v){
+ v.appendChild(el("h1","","Profile"));
+ var c=el("div","card");
+ c.appendChild(el("div","title",U.name));
+ c.appendChild(el("div","meta",U.phone+" · "+(U.role==="C"?"Customer":"Errander")));
+ c.appendChild(el("span","pill paid","Verified"));
+ v.appendChild(c);
+ v.appendChild(btn("Log out",function(){U=null;go("welcome")},"dark"));
+}
+
+/* ---------- post and detail ---------- */
+function post(v){
+ v.appendChild(btn("Back",function(){go("main","home")},"link"));
+ v.appendChild(el("h1","","Post an errand"));
+ v.appendChild(field("What do you need?","p-t","text","e.g. Buy pure water and bread",pre));pre="";
+ var d=el("div"),l=el("label","","Where is it?");l.setAttribute("for","p-a");d.appendChild(l);
+ var s=el("select");s.id="p-a";AREAS.forEach(function(a){var o=el("option","",a);o.value=a;s.appendChild(o)});d.appendChild(s);v.appendChild(d);
+ v.appendChild(field("Your offer (₦)","p-p","number","","1500"));
+ v.appendChild(el("p","meta","You pay Runna, not the errander. Runna holds your money and releases it only after you confirm delivery. Balance: "+naira(U.balance)));
+ v.appendChild(btn("Pay Runna and post errand",doPost,"primary"));
+}
+function doPost(){
+ var t=val("p-t"),p=parseInt(val("p-p"),10);
+ if(!t)return toast("Describe what you need first.");
+ if(!p||p<500)return toast("Offer at least ₦500.");
+ if(p>U.balance)return toast("Not enough balance. Add money in Wallet.");
+ U.balance-=p;
+ var e={id:nid++,title:t,area:val("p-a"),price:p,status:"open",owner:U.phone};
+ errands.unshift(e);sel=e.id;toast("Paid to Runna and posted. Nearby erranders have been notified.");go("detail");
+ setTimeout(function(){if(e.status==="open"){e.status="taken";e.by=NAMES[Math.floor(Math.random()*NAMES.length)];e.byPhone="sim";toast(e.by+" accepted your errand.");render()}},3500);
+ setTimeout(function(){if(e.status==="taken"&&e.byPhone==="sim"){e.status="delivered";toast(e.by+" says it's delivered.");render()}},9000);
+}
+function detail(v){
+ var e=byId(sel);
+ v.appendChild(btn("Back",function(){go("main")},"link"));
+ var c=el("div","card"),r=el("div","row"),l=el("div");
+ l.appendChild(el("div","title",e.title));l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":"You")));
+ r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));c.appendChild(r);v.appendChild(c);
+ var st=el("div","card"),ul=el("ul","steps");
+ STEPS.forEach(function(s,i){ul.appendChild(el("li",i<=IDX[e.status]?"done":"",s))});
+ st.appendChild(ul);v.appendChild(st);v.appendChild(el("div","escrow",e.status==="paid"?"Runna released "+naira(e.price)+" to "+(e.by||"the errander"):"Runna is holding "+naira(e.price)+" until delivery is confirmed"));
+ var s=el("div","stack");
+ if(U.role==="E"&&e.status==="open")s.appendChild(btn("Accept this errand",function(){
+  e.status="taken";e.by=U.name;e.byPhone=U.phone;toast("It's yours. Go get it.");render();
+ },"primary"));
+ if(U.role==="E"&&e.status==="taken"&&e.byPhone===U.phone)s.appendChild(btn("I've delivered it",function(){
+  e.status="delivered";toast("Marked delivered. Waiting for "+(e.cust||"the customer")+" to confirm.");render();
+  if(e.owner==="seed")setTimeout(function(){e.status="paid";toast(e.cust+" confirmed delivery. Runna released "+naira(e.price)+" to your wallet.");render()},3000);
+ },"primary"));
+ if(U.role==="C"&&e.status==="delivered"){s.appendChild(el("div","meta","Only confirm once your errand has reached you. Runna then releases "+naira(e.price)+" to "+e.by+"."));s.appendChild(btn("Confirm delivery",function(){e.status="paid";toast("Delivery confirmed. Runna released "+naira(e.price)+" to "+e.by+".");render()},"primary"))}
+ if(e.by&&e.status!=="paid"){s.appendChild(btn("Chat with "+(U.role==="C"?e.by:(e.cust||"customer")),function(){toast("Chat opens here in the real app.")}));s.appendChild(btn("Report a problem or get help",function(){toast("In the real app this alerts the Runna safety team and shares live location.")}))}
+ if(U.role==="C"&&e.status==="paid"){
+  s.appendChild(el("div","meta","Rate "+e.by));
+  var g=el("div","stars");
+  for(var i=1;i<=5;i++)(function(n){var b=btn(n+"★",function(){e.rating=n;toast("Thanks for rating.");render()});b.setAttribute("aria-pressed",String(e.rating===n));g.appendChild(b)})(i);
+  s.appendChild(g);
+ }
+ v.appendChild(s);
+}
+
+/* ---------- shell ---------- */
+function nav(){
+ var tabs=U.role==="C"?[["home","Home","M3 11l9-8 9 8v10H3zM9 21v-7h6v7"],["wallet","Wallet","M3 6h18v14H3zM3 10h18M16 15h2"],["profile","Profile","M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6"]]:[["home","Feed","M4 6h16M4 12h16M4 18h16"],["jobs","My jobs","M3 8h18v12H3zM9 8V5h6v3"],["wallet","Earnings","M3 6h18v14H3zM3 10h18M16 15h2"],["profile","Profile","M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6"]];
+ var n=el("nav"),d=el("div");
+ tabs.forEach(function(t){var b=btn("",function(){tab=t[0];render()});b.innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+t[2]+'"/></svg><span>'+t[1]+'</span>';if(tab===t[0])b.setAttribute("aria-current","page");d.appendChild(b)});
+ n.appendChild(d);return n;
+}
+function render(){
+ var v=document.getElementById("app");v.textContent="";
+ var old=document.querySelector("nav");if(old)old.remove();
+ var screens={welcome:welcome,signup:signup,login:login,verify:verify,post:post,detail:detail};
+ if(S==="main"){({home:home,jobs:jobs,wallet:wallet,profile:profile})[tab](v);document.body.appendChild(nav())}
+ else screens[S](v);
+ window.scrollTo(0,0);
+}
+render();
+</script>
+</body>
+</html>
