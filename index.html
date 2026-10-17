@@ -79,18 +79,22 @@ input,select{background:var(--bg);border-radius:16px}
 nav{border-top:none;box-shadow:0 -8px 24px rgba(0,0,0,.06)}
 nav button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 12px;font-size:12px;font-weight:600}
 nav button[aria-current="page"]{box-shadow:none;color:var(--accent);font-weight:800}
+.chat{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.msg{background:var(--card);border-radius:18px 18px 18px 6px;padding:10px 14px;max-width:85%;align-self:flex-start}
+.msg.me{background:var(--soft);border-radius:18px 18px 6px 18px;align-self:flex-end}
+.msg img{display:block;max-width:100%;border-radius:12px;margin-bottom:6px}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
-var AREAS=["Kuto","Ijaye","Oke-Ilewo","Panseke","Lafenwa","Abiola Way"];
-var users={},U=null,S="welcome",tab="home",sel=null,role="C",pre="",tt;
+var AREAS=["Kuto","Ijaye","Oke-Ilewo","Panseke","Lafenwa","Abiola Way","Others"];
+var users={},U=null,S="welcome",tab="home",sel=null,role="C",pre="",ptype="Other",draft=null,tt;
 var errands=[
-{id:1,title:"Buy 2 loaves of bread and eggs",area:"Kuto",price:1500,status:"open",owner:"seed",cust:"Bukola"},
-{id:2,title:"Pick up my laundry",area:"Oke-Ilewo",price:2000,status:"open",owner:"seed",cust:"Femi"},
-{id:3,title:"Pay my DSTV at the shop",area:"Panseke",price:1200,status:"open",owner:"seed",cust:"Ngozi"}
+{id:1,title:"Buy 2 loaves of bread and eggs",area:"Kuto",place:"Provision shop near Kuto roundabout",dropoff:"12 Adeola Street, Kuto",budget:2500,price:1500,status:"open",owner:"seed",cust:"Bukola"},
+{id:2,title:"Pick up my laundry",area:"Oke-Ilewo",place:"Laundry shop on Oke-Ilewo road",dropoff:"5 Ayo Close, Oke-Ilewo",budget:3000,price:2000,status:"open",owner:"seed",cust:"Femi"},
+{id:3,title:"Pay my DSTV at the shop",area:"Panseke",place:"DSTV shop, Panseke",budget:9000,price:1200,status:"open",owner:"seed",cust:"Ngozi"}
 ];
 var nid=4,NAMES=["Tunde Adebayo","Amaka Obi","Chinedu Eze","Aisha Bello","Seun Ogunleye","Kemi Salami"];
 var LABEL={open:"Waiting for an errander",taken:"Errander on the way",delivered:"Delivered, waiting for confirmation",paid:"Completed, payment released"};
@@ -108,7 +112,7 @@ function mine(){return errands.filter(function(e){return U.role==="C"?e.owner===
 
 /* ---------- auth ---------- */
 function welcome(v){
- var h=el("div","hero");h.appendChild(el("div","logo")).innerHTML="";
+ v.appendChild(el("span","pill open","Prototype: nothing here is real"));var h=el("div","hero");h.appendChild(el("div","logo")).innerHTML="";
  var lg=h.firstChild;lg.appendChild(document.createTextNode("Run"));lg.appendChild(el("span","","na"));
  h.appendChild(el("p","","Busy? Send someone. Free? Earn on the way."));
  v.appendChild(h);
@@ -138,7 +142,7 @@ function doSignup(){
  if(!/^0\d{10}$/.test(p))return toast("Enter an 11-digit phone number, like 08012345678.");
  if(w.length<6)return toast("Password needs at least 6 characters.");
  if(users[p])return toast("This number already has an account. Log in instead.");
- users[p]={name:n,phone:p,pw:w,role:role,balance:role==="C"?5000:0,verified:false};
+ users[p]={name:n,phone:p,pw:w,role:role,balance:role==="C"?5000:0,verified:false,done:0,dep:0,float:0};
  U=users[p];tab="home";go("verify");
 }
 function login(v){
@@ -168,7 +172,7 @@ function verify(v){
 function card(e,label,fn){
  var c=el("div","card"),r=el("div","row"),l=el("div");
  l.appendChild(el("div","title",e.title));
- l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":U.name)+(e.by?" · errander: "+e.by:"")));
+ l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":U.name)+(e.by?" · errander: "+e.by:"")+(e.budget?" · items up to "+naira(e.budget):"")));
  r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));
  c.appendChild(r);c.appendChild(el("span","pill "+e.status,LABEL[e.status]));
  var b=btn(label||"View details",fn||function(){sel=e.id;go("detail")});b.style.width="100%";b.style.marginTop="6px";c.appendChild(b);
@@ -180,9 +184,9 @@ function home(v){
  if(U.role==="C"){
   var hc=el("div","heroc");hc.appendChild(el("div","hh","Too busy to run it yourself?"));
   hc.appendChild(el("div","hs","Verified erranders nearby will do it. Your money stays with Runna until you confirm delivery."));
-  hc.appendChild(btn("Post an errand",function(){pre="";go("post")},"lime"));v.appendChild(hc);
+  hc.appendChild(btn("Post an errand",function(){pre="";ptype="Other";draft=null;go("post")},"lime"));v.appendChild(hc);
   v.appendChild(el("h2","","Popular errands"));var tg=el("div","tiles");
-  [["Buy items","Buy: "],["Pick up and drop off","Pick up and deliver: "],["Queue for me","Queue for me at: "],["Pay a bill","Pay a bill: "]].forEach(function(t){tg.appendChild(btn(t[0],function(){pre=t[1];go("post")},"tile"))});
+  [["Buy items","Buy: "],["Pick up and drop off","Pick up and deliver: "],["Queue for me","Queue for me at: "],["Pay a bill","Pay a bill: "]].forEach(function(t){tg.appendChild(btn(t[0],function(){pre=t[1];ptype=t[0];draft=null;go("post")},"tile"))});
   v.appendChild(tg);
   v.appendChild(el("h2","","Your errands"));
   var m=mine();
@@ -213,10 +217,14 @@ function wallet(v){
   if(!m.length)v.appendChild(el("div","empty","Your payments show up here."));
   m.forEach(function(e){v.appendChild(card(e,"View details"))});
  }else{
-  var paid=0,pend=0;mine().forEach(function(e){if(e.status==="paid")paid+=e.price;else pend+=e.price});
+  var paid=0,pend=0;mine().forEach(function(e){var r=e.price+(e.advance?0:(e.status==="paid"?e.cost||0:e.budget||0));if(e.status==="paid")paid+=r;else pend+=r});
   c.appendChild(el("div","meta","Earned"));c.appendChild(el("div","bal",naira(paid)));
-  c.appendChild(el("div","meta","Pending: "+naira(pend)));
-  var w=btn("Withdraw to bank (simulated)",function(){toast(paid?"Withdrawal started.":"Nothing to withdraw yet.")},"dark");w.style.marginTop="12px";c.appendChild(w);
+  c.appendChild(el("div","meta","Pending: "+naira(pend)+" · Advance in hand: "+naira(U.float)));c.appendChild(el("div","meta","Deposit held by Runna: "+naira(U.dep)));
+  var w=btn("Withdraw to bank (simulated)",function(){toast(paid?"Withdrawal started to your bank account in your verified name. New accounts wait 24 hours.":"Nothing to withdraw yet.")},"dark");w.style.marginTop="12px";c.appendChild(w);
+  var dp=btn("Add ₦5,000 deposit (simulated)",function(){U.dep+=5000;toast("Deposit added. Refundable when you leave in good standing.");render()});dp.style.marginTop="8px";c.appendChild(dp);
+  var ok=U.done>=10&&U.dep>=5000;
+  var ad=el("div","escrow",ok?"Advances unlocked: Runna sends item money (up to ₦3,000) when you accept.":"Advances locked. Needs 10 completed errands (you have "+U.done+") and a ₦5,000 deposit. Until then, pay the shop first and get refunded.");ad.style.marginTop="12px";c.appendChild(ad);
+  var sk=btn("Prototype: skip ahead to 10 completed errands",function(){U.done=10;toast("Skipped ahead for the demo.");render()});sk.style.marginTop="8px";c.appendChild(sk);
   v.appendChild(c);
  }
 }
@@ -231,46 +239,165 @@ function profile(v){
 }
 
 /* ---------- post and detail ---------- */
+var TYPES=["Buy items","Pick up and drop off","Queue for me","Pay a bill","Other"],DELIV=["Buy items","Pick up and drop off"];
 function post(v){
- v.appendChild(btn("Back",function(){go("main","home")},"link"));
+ var dv=draft||{};
+ v.appendChild(btn("Back",function(){draft=null;go("main","home")},"link"));
  v.appendChild(el("h1","","Post an errand"));
- v.appendChild(field("What do you need?","p-t","text","e.g. Buy pure water and bread",pre));pre="";
- var d=el("div"),l=el("label","","Where is it?");l.setAttribute("for","p-a");d.appendChild(l);
- var s=el("select");s.id="p-a";AREAS.forEach(function(a){var o=el("option","",a);o.value=a;s.appendChild(o)});d.appendChild(s);v.appendChild(d);
- v.appendChild(field("Your offer (₦)","p-p","number","","1500"));
- v.appendChild(el("p","meta","You pay Runna, not the errander. Runna holds your money and releases it only after you confirm delivery. Balance: "+naira(U.balance)));
- v.appendChild(btn("Pay Runna and post errand",doPost,"primary"));
+ var d0=el("div"),l0=el("label","","Type of errand");l0.setAttribute("for","p-k");d0.appendChild(l0);
+ var k=el("select");k.id="p-k";TYPES.forEach(function(t){var o=el("option","",t);o.value=t;k.appendChild(o)});k.value=dv.k||ptype;d0.appendChild(k);v.appendChild(d0);
+ v.appendChild(field("What do you need?","p-t","text","e.g. Buy pure water and bread",dv.t!==undefined?dv.t:pre));pre="";
+ var d=el("div"),l=el("label","","Area (choose Others if it is not listed)");l.setAttribute("for","p-a");d.appendChild(l);
+ var s=el("select");s.id="p-a";AREAS.forEach(function(a){var o=el("option","",a);o.value=a;s.appendChild(o)});if(dv.a)s.value=dv.a;d.appendChild(s);v.appendChild(d);
+ v.appendChild(field("Exact place to go (shop, street, landmark)","p-x","text","Describe exactly where the errander should go",dv.x||""));
+ var dd=field("Deliver to (full address and landmark)","p-d","text","Where should it be dropped off?",dv.d||"");v.appendChild(dd);
+ function tog(){dd.style.display=DELIV.indexOf(k.value)>-1?"":"none"}k.addEventListener("change",tog);tog();
+ v.appendChild(field("Item budget (₦): the most the errander may spend on items or bills","p-b","number","",dv.b!==undefined?dv.b:"2000"));
+ v.appendChild(field("Errander fee (₦)","p-p","number","",dv.p||"1500"));
+ v.appendChild(el("p","meta","You pay Runna the item budget plus the errander fee. Runna holds it and pays the errander only after you confirm delivery. Unspent budget comes back to your wallet. Balance: "+naira(U.balance)));
+ v.appendChild(btn("Review errand",toConfirm,"primary"));
+}
+function toConfirm(){
+ var k=val("p-k"),t=val("p-t"),a=val("p-a"),x=val("p-x"),dl=DELIV.indexOf(k)>-1,d=dl?val("p-d"):"",p=parseInt(val("p-p"),10),b=parseInt(val("p-b"),10);
+ if(isNaN(b)||b<0)b=0;
+ if(!t)return toast("Describe what you need first.");
+ if(!x)return toast(a==="Others"?"Type the area and a full description of the place.":"Add the exact place, like the shop name or landmark.");
+ if(dl&&!d)return toast("Add the delivery address.");
+ if(!p||p<500)return toast("Errander fee must be at least ₦500.");
+ if(b+p>U.balance)return toast("Not enough balance for "+naira(b+p)+". Add money in Wallet.");
+ draft={k:k,t:t,a:a,x:x,d:d,p:p,b:b};go("confirm");
+}
+function confirmPost(v){
+ var c=draft;
+ v.appendChild(btn("Edit details",function(){go("post")},"link"));
+ v.appendChild(el("h1","","Check your errand"));
+ var cd=el("div","card");
+ [["Type",c.k],["Task",c.t],["Area",c.a],["Go to",c.x],["Deliver to",c.d||"Not needed"],["Item budget",naira(c.b)],["Errander fee",naira(c.p)],["Total held by Runna",naira(c.b+c.p)]].forEach(function(r){var w=el("div");w.style.marginBottom="10px";w.appendChild(el("div","meta",r[0]));w.appendChild(el("div","title",r[1]));cd.appendChild(w)});
+ v.appendChild(cd);
+ v.appendChild(el("p","meta","Check the delivery address carefully. Runna holds the total and pays the errander only after you confirm delivery. Whatever the items cost below your budget comes back to your wallet."));
+ v.appendChild(btn("Confirm and pay Runna",doPost,"primary"));
 }
 function doPost(){
- var t=val("p-t"),p=parseInt(val("p-p"),10);
- if(!t)return toast("Describe what you need first.");
- if(!p||p<500)return toast("Offer at least ₦500.");
- if(p>U.balance)return toast("Not enough balance. Add money in Wallet.");
- U.balance-=p;
- var e={id:nid++,title:t,area:val("p-a"),price:p,status:"open",owner:U.phone};
- errands.unshift(e);sel=e.id;toast("Paid to Runna and posted. Nearby erranders have been notified.");go("detail");
- setTimeout(function(){if(e.status==="open"){e.status="taken";e.by=NAMES[Math.floor(Math.random()*NAMES.length)];e.byPhone="sim";toast(e.by+" accepted your errand.");render()}},3500);
- setTimeout(function(){if(e.status==="taken"&&e.byPhone==="sim"){e.status="delivered";toast(e.by+" says it's delivered.");render()}},9000);
+ var c=draft;if(!c)return go("post");
+ if(c.b+c.p>U.balance)return toast("Not enough balance. Add money in Wallet.");
+ U.balance-=c.b+c.p;
+ var e={id:nid++,title:c.t,type:c.k,area:c.a,place:c.x,dropoff:c.d,budget:c.b,price:c.p,status:"open",owner:U.phone};
+ draft=null;errands.unshift(e);sel=e.id;toast("Paid to Runna and posted. Nearby erranders have been notified.");go("detail");
+ setTimeout(function(){if(e.status==="open"){e.status="taken";e.by=NAMES[Math.floor(Math.random()*NAMES.length)];e.byPhone="sim";e.advance=e.budget>0&&e.budget<=3000;say(e,{from:"E",text:"Hi, I accepted your errand. I will send a photo and the price before I buy."});toast(e.by+" accepted your errand.");render();setTimeout(function(){if(e.budget&&e.status==="taken"){say(e,{from:"E",price:e.budget>=1000?e.budget-200:e.budget,approved:null});toast(e.by+" sent a price for approval.");render()}},2500)}},3500);
+ setTimeout(function(){if(e.status==="taken"&&e.byPhone==="sim"){if(e.budget){e.cost=Math.max(0,e.budget-(e.budget>=1000?200:0));e.receipt=true}e.status="delivered";toast(e.by+" says it's delivered.");render()}},9000);
+}
+function acceptErrand(e){
+ e.status="taken";e.by=U.name;e.byPhone=U.phone;
+ var b=e.budget||0;
+ if(b&&U.done>=10&&U.dep>=5000&&b<=3000){e.advance=true;U.float+=b;toast(naira(b)+" advance sent to your wallet. Use it to pay the shop.")}
+ else if(b)toast("Pay the shop with your own money first. Runna refunds you after the customer confirms.");
+ else toast("It's yours. Go get it.");
+ render();
+}
+function deliverErrand(e){
+ if(e.budget){
+  if(e.advance&&!e.checked)return toast("Check in at the shop first.");
+  var c=parseInt(document.getElementById("r-c").value,10);
+  if(isNaN(c)||c<0)return toast("Enter what the items actually cost.");
+  if(!proof(e))return toast("Send proof in the chat first: a photo (receipt, transfer or items) and a price the customer approves.");
+  if(c>e.budget){
+   toast("Items cost more than the budget. Asking the customer to approve "+naira(c-e.budget)+" more.");
+   if(e.owner==="seed")setTimeout(function(){e.budget=c;toast(e.cust+" approved the higher budget. You can deliver now.");render()},2000);
+   return;
+  }
+  e.cost=c;
+ }
+ e.status="delivered";toast("Marked delivered. Waiting for "+(e.cust||"the customer")+" to confirm.");render();
+ if(e.owner==="seed")setTimeout(function(){settleSeed(e)},3000);
+}
+function settleSeed(e){
+ e.status="paid";var b=e.budget||0,ch=b-(e.cost||0);
+ if(e.advance)U.float-=b;
+ U.done+=1;
+ toast(e.cust+" confirmed. You earn "+naira(e.price)+(e.advance?"":" plus a "+naira(e.cost||0)+" refund")+"."+(ch>0?" Change of "+naira(ch)+" went back to the customer.":""));
+ render();
+}
+function confirmDelivery(e){
+ var ch=(e.budget||0)-(e.cost||0);e.status="paid";if(ch>0)U.balance+=ch;
+ toast("Delivery confirmed. Runna paid "+e.by+(ch>0?" and returned "+naira(ch)+" to your wallet.":"."));render();
+}
+function proof(e){var ph=false,ok=false;(e.msgs||[]).forEach(function(x){if(x.from==="E"&&x.img)ph=true;if(x.price!==undefined&&x.approved)ok=true});return !!e.receipt||(ph&&ok)}
+function say(e,m){(e.msgs=e.msgs||[]).push(m)}
+function shrink(file,cb){var r=new FileReader();r.onload=function(){var i=new Image();i.onload=function(){var k=Math.min(1,700/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext("2d").drawImage(i,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",0.7))};i.onerror=function(){toast("Could not read that photo.")};i.src=r.result};r.readAsDataURL(file)}
+function autoReply(e,kind){
+ if(e.owner!=="seed"||U.role!=="E")return;
+ setTimeout(function(){
+  if(kind==="price"){var m=(e.msgs||[]).filter(function(x){return x.price!==undefined&&x.approved===null}).pop();if(m){m.approved=true;say(e,{from:"C",text:"Approved."})}}
+  else say(e,{from:"C",text:"Got it, thanks."});
+  render();
+ },1800);
+}
+function chatScreen(v){
+ var e=byId(sel);
+ v.appendChild(btn("Back",function(){go("detail")},"link"));
+ v.appendChild(el("h1","","Chat"));
+ v.appendChild(el("p","meta",e.title+". Send photos of the items, a receipt or a transfer alert, and get the price approved before buying."));
+ var box=el("div","chat"),ms=e.msgs||[];
+ if(!ms.length)box.appendChild(el("div","empty","No messages yet."));
+ ms.forEach(function(x){
+  var b=el("div","msg"+(x.from===U.role?" me":""));
+  if(x.img){var im=el("img");im.src=x.img;im.alt="Photo sent in chat";b.appendChild(im)}
+  if(x.price!==undefined){
+   b.appendChild(el("div","title","Price check: "+naira(x.price)));
+   if(x.approved===true)b.appendChild(el("div","meta","Approved by the customer"));
+   else if(x.approved===false)b.appendChild(el("div","meta","Declined"));
+   else if(U.role==="C"){
+    var a=btn("Approve",function(){x.approved=true;say(e,{from:"C",text:"Approved "+naira(x.price)+"."});render()},"primary");a.style.marginTop="8px";b.appendChild(a);
+    var d=btn("Decline",function(){x.approved=false;say(e,{from:"C",text:"Declined. Please check the price."});render()});d.style.marginTop="6px";b.appendChild(d);
+   }else b.appendChild(el("div","meta","Waiting for the customer to approve"));
+  }
+  if(x.text)b.appendChild(el("div","",x.text));
+  box.appendChild(b);
+ });
+ v.appendChild(box);
+ var row=el("div","stack");
+ var f=el("input");f.type="file";f.accept="image/*";f.setAttribute("capture","environment");f.style.display="none";
+ f.addEventListener("change",function(){var fl=f.files&&f.files[0];if(fl)shrink(fl,function(u){say(e,{from:U.role,img:u});autoReply(e,"photo");render()})});
+ row.appendChild(f);
+ row.appendChild(btn("Take photo",function(){f.click()}));
+ if(U.role==="E"&&e.budget){
+  row.appendChild(field("Price to approve (₦)","c-p","number","",""));
+  row.appendChild(btn("Send price for approval",function(){var p=parseInt(val("c-p"),10);if(!p||p<=0)return toast("Enter the price first.");say(e,{from:"E",price:p,approved:null});e.costDraft=String(p);autoReply(e,"price");render()}));
+ }
+ row.appendChild(field("Message","c-t","text","Type a message",""));
+ row.appendChild(btn("Send",function(){var t=val("c-t");if(!t)return;say(e,{from:U.role,text:t});render()},"primary"));
+ v.appendChild(row);
 }
 function detail(v){
  var e=byId(sel);
  v.appendChild(btn("Back",function(){go("main")},"link"));
  var c=el("div","card"),r=el("div","row"),l=el("div");
  l.appendChild(el("div","title",e.title));l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":"You")));
- r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));c.appendChild(r);v.appendChild(c);
+ r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));c.appendChild(r);
+ if(e.place){var m1=el("div","meta","Go to: "+e.place);m1.style.marginTop="10px";c.appendChild(m1)}
+ if(e.dropoff){var m2=el("div","meta","Deliver to: "+e.dropoff);m2.style.marginTop="4px";c.appendChild(m2)}
+ if(e.budget){var m3=el("div","meta","Item budget: "+naira(e.budget)+" · Errander fee: "+naira(e.price));m3.style.marginTop="4px";c.appendChild(m3)}
+ if(e.cost!==undefined){var m4=el("div","meta","Receipt: items cost "+naira(e.cost)+(e.budget-e.cost>0?" · change "+naira(e.budget-e.cost)+" returns to the customer":""));m4.style.marginTop="4px";c.appendChild(m4)}
+ if(e.by&&e.budget){var m5=el("div","meta",e.advance?"Item money sent to the errander as an advance":"Errander pays the shop first and is refunded after confirmation");m5.style.marginTop="4px";c.appendChild(m5)}
+ v.appendChild(c);
  var st=el("div","card"),ul=el("ul","steps");
  STEPS.forEach(function(s,i){ul.appendChild(el("li",i<=IDX[e.status]?"done":"",s))});
- st.appendChild(ul);v.appendChild(st);v.appendChild(el("div","escrow",e.status==="paid"?"Runna released "+naira(e.price)+" to "+(e.by||"the errander"):"Runna is holding "+naira(e.price)+" until delivery is confirmed"));
+ st.appendChild(ul);v.appendChild(st);v.appendChild(el("div","escrow",e.status==="paid"?"Runna paid "+(e.by||"the errander")+(e.cost!==undefined&&e.budget-e.cost>0?". Change of "+naira(e.budget-e.cost)+" returned to the customer.":"."):"Runna is holding "+naira((e.budget||0)+e.price)+(e.budget?" ("+naira(e.budget)+" for items + "+naira(e.price)+" errander fee)":"")+" until delivery is confirmed"));
  var s=el("div","stack");
  if(U.role==="E"&&e.status==="open")s.appendChild(btn("Accept this errand",function(){
-  e.status="taken";e.by=U.name;e.byPhone=U.phone;toast("It's yours. Go get it.");render();
+  acceptErrand(e);
  },"primary"));
- if(U.role==="E"&&e.status==="taken"&&e.byPhone===U.phone)s.appendChild(btn("I've delivered it",function(){
-  e.status="delivered";toast("Marked delivered. Waiting for "+(e.cust||"the customer")+" to confirm.");render();
-  if(e.owner==="seed")setTimeout(function(){e.status="paid";toast(e.cust+" confirmed delivery. Runna released "+naira(e.price)+" to your wallet.");render()},3000);
- },"primary"));
- if(U.role==="C"&&e.status==="delivered"){s.appendChild(el("div","meta","Only confirm once your errand has reached you. Runna then releases "+naira(e.price)+" to "+e.by+"."));s.appendChild(btn("Confirm delivery",function(){e.status="paid";toast("Delivery confirmed. Runna released "+naira(e.price)+" to "+e.by+".");render()},"primary"))}
- if(e.by&&e.status!=="paid"){s.appendChild(btn("Chat with "+(U.role==="C"?e.by:(e.cust||"customer")),function(){toast("Chat opens here in the real app.")}));s.appendChild(btn("Report a problem or get help",function(){toast("In the real app this alerts the Runna safety team and shares live location.")}))}
+ if(U.role==="E"&&e.status==="taken"&&e.byPhone===U.phone){
+  if(e.budget){
+   var sv=function(){var q=document.getElementById("r-c");if(q)e.costDraft=q.value};
+   if(e.advance&&!e.checked)s.appendChild(btn("Check in at the shop (location)",function(){sv();e.checked=true;toast("Location check-in saved.");render()}));
+   s.appendChild(field("Actual cost of items (₦)","r-c","number","",e.costDraft!==undefined?e.costDraft:e.budget));
+   s.appendChild(btn(proof(e)?"Proof sent in chat":"Send photo and price in chat",function(){sv();go("chat")}));
+  }
+  s.appendChild(btn("I've delivered it",function(){deliverErrand(e)},"primary"));
+ }
+ if(U.role==="C"&&e.status==="delivered"){s.appendChild(el("div","meta","Only confirm once your errand has reached you. Runna then pays "+e.by+" the fee"+(e.cost?" and the item cost":"")+", and returns any change to your wallet."));s.appendChild(btn("Confirm delivery",function(){confirmDelivery(e)},"primary"))}
+ if(e.by&&e.status!=="paid"){s.appendChild(btn("Chat with "+(U.role==="C"?e.by:(e.cust||"customer")),function(){go("chat")}));s.appendChild(btn("Report a problem or get help",function(){toast("In the real app this alerts the Runna safety team and shares live location.")}))}
  if(U.role==="C"&&e.status==="paid"){
   s.appendChild(el("div","meta","Rate "+e.by));
   var g=el("div","stars");
@@ -290,7 +417,7 @@ function nav(){
 function render(){
  var v=document.getElementById("app");v.textContent="";
  var old=document.querySelector("nav");if(old)old.remove();
- var screens={welcome:welcome,signup:signup,login:login,verify:verify,post:post,detail:detail};
+ var screens={welcome:welcome,signup:signup,login:login,verify:verify,post:post,confirm:confirmPost,detail:detail,chat:chatScreen};
  if(S==="main"){({home:home,jobs:jobs,wallet:wallet,profile:profile})[tab](v);document.body.appendChild(nav())}
  else screens[S](v);
  window.scrollTo(0,0);
