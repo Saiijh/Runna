@@ -83,6 +83,16 @@ nav button[aria-current="page"]{box-shadow:none;color:var(--accent);font-weight:
 .msg{background:var(--card);border-radius:18px 18px 18px 6px;padding:10px 14px;max-width:85%;align-self:flex-start}
 .msg.me{background:var(--soft);border-radius:18px 18px 6px 18px;align-self:flex-end}
 .msg img{display:block;max-width:100%;border-radius:12px;margin-bottom:6px}
+.hero2{background:linear-gradient(135deg,#0b6e4f,#073d2c);color:#fff;border-radius:26px;padding:22px;margin:4px 0 18px;box-shadow:0 12px 30px rgba(7,61,44,.25)}
+.hero2 h2{margin:0;font-size:26px;font-weight:800;letter-spacing:-.8px;line-height:1.15}
+.hero2 p{margin:6px 0 16px;opacity:.85;font-size:14px}
+.gs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gl{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:12px}
+.gl .t{font-size:12px;opacity:.9}
+.gl .v{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:4px}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+.qa button{border:none;border-radius:20px;color:#fff;padding:16px;text-align:left;min-height:96px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;font-weight:800;font-size:16px;line-height:1.2}
+.qa small{font-weight:500;opacity:.85;font-size:12px}
 </style>
 </head>
 <body>
@@ -178,24 +188,47 @@ function card(e,label,fn){
  var b=btn(label||"View details",fn||function(){sel=e.id;go("detail")});b.style.width="100%";b.style.marginTop="6px";c.appendChild(b);
  return c;
 }
+var PRE={"Buy items":"Buy: ","Pick up and drop off":"Pick up and deliver: ","Pay a bill":"Pay a bill: ","Other":""};
+function qbtn(t,sub,g,fn){var b=el("button","",t);b.style.background="linear-gradient(135deg,"+g+")";b.appendChild(el("small","",sub));b.addEventListener("click",fn);return b}
 function home(v){
+ var m=mine(),first=U.name.split(" ")[0];
  var tb=el("div","top");tb.appendChild(el("div","loc","Abeokuta"));tb.appendChild(el("div","avatar",U.name.charAt(0).toUpperCase()));v.appendChild(tb);
- v.appendChild(el("h1","","Hi, "+U.name.split(" ")[0]));
+ var h=el("div","hero2");
+ h.appendChild(el("h2","","Welcome back, "+first));
+ h.appendChild(el("p","",new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})+". Here is your overview."));
+ var st,gs=el("div","gs");
  if(U.role==="C"){
-  var hc=el("div","heroc");hc.appendChild(el("div","hh","Too busy to run it yourself?"));
-  hc.appendChild(el("div","hs","Verified erranders nearby will do it. Your money stays with Runna until you confirm delivery."));
-  hc.appendChild(btn("Post an errand",function(){pre="";ptype="Other";draft=null;go("post")},"lime"));v.appendChild(hc);
-  v.appendChild(el("h2","","Popular errands"));var tg=el("div","tiles");
-  [["Buy items","Buy: "],["Pick up and drop off","Pick up and deliver: "],["Queue for me","Queue for me at: "],["Pay a bill","Pay a bill: "]].forEach(function(t){tg.appendChild(btn(t[0],function(){pre=t[1];ptype=t[0];draft=null;go("post")},"tile"))});
-  v.appendChild(tg);
+  var act=m.filter(function(e){return e.status!=="paid"}).length,held=0;
+  m.forEach(function(e){if(e.status!=="paid")held+=(e.budget||0)+e.price});
+  st=[["Active errands",act],["Completed",m.length-act],["Held by Runna",naira(held)],["Wallet",naira(U.balance)]];
+ }else{
+  var earn=0;m.forEach(function(e){if(e.status==="paid")earn+=e.price+(e.advance?0:(e.cost||0))});
+  st=[["Open nearby",errands.filter(function(e){return e.status==="open"}).length],["Completed",U.done],["Earned",naira(earn)],["Advance limit",(U.done>=10&&U.dep>=5000)?"₦3,000":"Locked"]];
+ }
+ st.forEach(function(x){var g=el("div","gl");g.appendChild(el("div","t",x[0]));g.appendChild(el("div","v",String(x[1])));gs.appendChild(g)});
+ h.appendChild(gs);v.appendChild(h);
+ v.appendChild(el("h2","","Quick actions"));
+ var qa=el("div","qa");
+ if(U.role==="C"){
+  [["Post an errand","Create a new errand","#0b6e4f,#0b8a5a","Other"],["Buy items","Shop for you","#ea580c,#f97316","Buy items"],["Pick up and drop off","Parcels and laundry","#7c3aed,#9333ea","Pick up and drop off"],["Pay a bill","DSTV, power and more","#0e7490,#0891b2","Pay a bill"]].forEach(function(q){
+   qa.appendChild(qbtn(q[0],q[1],q[2],function(){pre=PRE[q[3]];ptype=q[3];draft=null;go("post")}));
+  });
+ }else{
+  [["My jobs","Errands you accepted","#0b6e4f,#0b8a5a","jobs"],["Earnings","Balance and payouts","#ea580c,#f97316","wallet"],["Unlock advances","Deposit and rules","#7c3aed,#9333ea","wallet"],["Profile","Verified details","#0e7490,#0891b2","profile"]].forEach(function(q){
+   qa.appendChild(qbtn(q[0],q[1],q[2],function(){tab=q[3];render()}));
+  });
+ }
+ v.appendChild(qa);
+ var need=m.filter(function(e){return U.role==="C"?e.status==="delivered":e.status==="taken"});
+ if(need.length){v.appendChild(el("h2","","Needs your attention"));need.forEach(function(e){v.appendChild(card(e,"Review now"))})}
+ if(U.role==="C"){
   v.appendChild(el("h2","","Your errands"));
-  var m=mine();
   if(!m.length)v.appendChild(el("div","empty","No errands yet. Post your first one."));
   m.forEach(function(e){v.appendChild(card(e))});
  }else{
   v.appendChild(el("h2","","Open errands near you"));
   var o=errands.filter(function(e){return e.status==="open"});
-  if(!o.length)v.appendChild(el("div","empty","No open errands right now. You'll be notified when one comes in."));
+  if(!o.length)v.appendChild(el("div","empty","No open errands right now. You will be notified when one comes in."));
   o.forEach(function(e){v.appendChild(card(e,"View and accept"))});
  }
 }
