@@ -168,21 +168,47 @@ function login(v){
  v.appendChild(el("p","note","No account yet? Go back and create one."));
 }
 function verify(v){
+ var E=U.role==="E";
  v.appendChild(el("h1","","Verify your identity"));
- v.appendChild(el("p","meta",U.role==="E"?"Customers trust erranders with their money and sometimes their homes, so every errander is verified before accepting errands.":"Erranders go to the places you send them, so everyone who posts an errand is verified first. This keeps Runna from being used to lure anyone into harm."));
+ v.appendChild(el("p","meta",E?"Customers trust erranders with their money and sometimes their homes, so every errander is checked before accepting errands. A guarantor vouches for you.":"Erranders go to the places you send them, so everyone who posts an errand is verified first. This keeps Runna from being used to lure anyone into harm."));
  v.appendChild(field("NIN (11 digits)","v-n","tel","12345678901"));
- var c=el("div","card","Selfie with your ID: the real app opens the camera here.");c.style.marginTop="12px";v.appendChild(c);
+ if(E){
+  v.appendChild(field("Home address","v-a","text","House number, street, landmark"));
+  var d=el("div"),l=el("label","","Area you work in");l.setAttribute("for","v-ar");d.appendChild(l);
+  var sl=el("select");sl.id="v-ar";AREAS.filter(function(a){return a!=="Others"}).forEach(function(a){var o=el("option","",a);o.value=a;sl.appendChild(o)});d.appendChild(sl);v.appendChild(d);
+  v.appendChild(el("h2","","Guarantor"));
+  v.appendChild(el("p","meta","Someone who knows you and agrees to vouch for you, such as a family member, employer or community leader."));
+  v.appendChild(field("Guarantor full name","v-gn","text"));
+  v.appendChild(field("Guarantor phone number","v-gp","tel","08012345678"));
+  v.appendChild(field("Relationship to you","v-gr","text","e.g. Uncle, employer, church leader"));
+ }
+ v.appendChild(el("h2","","Recent photograph"));
+ var im=el("img");im.alt="Your photo";im.style.cssText="display:none;width:120px;height:120px;object-fit:cover;border-radius:50%;margin-bottom:10px";
+ if(U.selfie){im.src=U.selfie;im.style.display="block"}
+ v.appendChild(im);
+ var f=el("input");f.type="file";f.accept="image/*";f.setAttribute("capture","user");f.style.display="none";
+ f.addEventListener("change",function(){var fl=f.files&&f.files[0];if(fl)shrink(fl,function(u){U.selfie=u;im.src=u;im.style.display="block"})});
+ v.appendChild(f);
+ var sb=btn(U.selfie?"Retake photo":"Take a recent photo",function(){f.click()});sb.style.marginBottom="14px";v.appendChild(sb);
  v.appendChild(btn("Submit for verification",function(){
   if(!/^\d{11}$/.test(val("v-n")))return toast("NIN must be 11 digits.");
-  U.verified=true;toast("Verified. In the real app this takes a few minutes of checks.");go("main");
+  if(E){
+   if(val("v-a").length<8)return toast("Enter your full home address.");
+   if(val("v-gn").length<2)return toast("Enter your guarantor's name.");
+   if(!/^0\d{10}$/.test(val("v-gp")))return toast("Enter the guarantor's 11-digit phone number.");
+   if(!val("v-gr"))return toast("Say how the guarantor knows you.");
+   U.area=val("v-ar");U.guarantor=val("v-gn");
+  }
+  if(!U.selfie)return toast("Take a recent photo first.");
+  U.verified=true;toast("Submitted. In the real build Runna checks your details and calls your guarantor first.");go("main");
  },"primary"));
 }
-
 /* ---------- main ---------- */
+function dist(e){return U.role==="E"&&U.area?(e.area===U.area?" · 0.6 km away":" · 3.4 km away"):""}
 function card(e,label,fn){
  var c=el("div","card"),r=el("div","row"),l=el("div");
  l.appendChild(el("div","title",e.title));
- l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":U.name)+(e.by?" · errander: "+e.by:"")+(e.budget?" · items up to "+naira(e.budget):"")));
+ l.appendChild(el("div","meta",e.area+" · "+(e.cust?e.cust+" ✓ ID verified":U.name)+(e.by?" · errander: "+e.by:"")+(e.budget?" · items up to "+naira(e.budget):"")+dist(e)));
  r.appendChild(l);r.appendChild(el("div","price",naira(e.price)));
  c.appendChild(r);c.appendChild(el("span","pill "+e.status,LABEL[e.status]));
  var b=btn(label||"View details",fn||function(){sel=e.id;go("detail")});b.style.width="100%";b.style.marginTop="6px";c.appendChild(b);
@@ -227,7 +253,7 @@ function home(v){
   m.forEach(function(e){v.appendChild(card(e))});
  }else{
   v.appendChild(el("h2","","Open errands near you"));
-  var o=errands.filter(function(e){return e.status==="open"});
+  var o=errands.filter(function(e){return e.status==="open"});o.sort(function(a,b){return (a.area===U.area?0:1)-(b.area===U.area?0:1)});
   if(!o.length)v.appendChild(el("div","empty","No open errands right now. You will be notified when one comes in."));
   o.forEach(function(e){v.appendChild(card(e,"View and accept"))});
  }
@@ -266,6 +292,7 @@ function profile(v){
  var c=el("div","card");
  c.appendChild(el("div","title",U.name));
  c.appendChild(el("div","meta",U.phone+" · "+(U.role==="C"?"Customer":"Errander")));
+ if(U.area)c.appendChild(el("div","meta","Area: "+U.area+" · Guarantor: "+U.guarantor));
  c.appendChild(el("span","pill paid","Verified"));
  v.appendChild(c);
  v.appendChild(btn("Log out",function(){U=null;go("welcome")},"dark"));
@@ -315,7 +342,7 @@ function doPost(){
  if(c.b+c.p>U.balance)return toast("Not enough balance. Add money in Wallet.");
  U.balance-=c.b+c.p;
  var e={id:nid++,title:c.t,type:c.k,area:c.a,place:c.x,dropoff:c.d,budget:c.b,price:c.p,status:"open",owner:U.phone};
- draft=null;errands.unshift(e);sel=e.id;toast("Paid to Runna and posted. Nearby erranders have been notified.");go("detail");
+ draft=null;errands.unshift(e);sel=e.id;toast("Paid to Runna and posted. The closest erranders are alerted first, then the search widens.");go("detail");
  setTimeout(function(){if(e.status==="open"){e.status="taken";e.by=NAMES[Math.floor(Math.random()*NAMES.length)];e.byPhone="sim";e.advance=e.budget>0&&e.budget<=3000;say(e,{from:"E",text:"Hi, I accepted your errand. I will send a photo and the price before I buy."});toast(e.by+" accepted your errand.");render();setTimeout(function(){if(e.budget&&e.status==="taken"){say(e,{from:"E",price:e.budget>=1000?e.budget-200:e.budget,approved:null});toast(e.by+" sent a price for approval.");render()}},2500)}},3500);
  setTimeout(function(){if(e.status==="taken"&&e.byPhone==="sim"){if(e.budget){e.cost=Math.max(0,e.budget-(e.budget>=1000?200:0));e.receipt=true}e.status="delivered";toast(e.by+" says it's delivered.");render()}},9000);
 }
